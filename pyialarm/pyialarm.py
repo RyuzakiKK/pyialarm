@@ -12,7 +12,7 @@ class IAlarm(object):
     """
 
     ARMED_AWAY = 1
-    ARMED_STAY_NIGHT = 2
+    ARMED_STAY = 2
     DISARMED = 3
 
     def __init__(self, username, password, url):
@@ -28,8 +28,6 @@ class IAlarm(object):
     def authenticate(self):
         """ Apparently the web interface doesn't use cookies or local/session storage """
         pass
-        # r = requests.get(self.url, auth=(self.username, self.password))
-        # self.cookie = r.cookies
 
     def get_status(self):
         try:
@@ -47,8 +45,8 @@ class IAlarm(object):
     def arm_away(self):
         self.arm(self.ARMED_AWAY)
 
-    def arm_stay_night(self):
-        self.arm(self.ARMED_STAY_NIGHT)
+    def arm_stay(self):
+        self.arm(self.ARMED_STAY)
 
     def disarm(self):
         self.arm(self.DISARMED)
@@ -56,6 +54,6 @@ class IAlarm(object):
     def arm(self, arm_type):
         form_data = {'Ctrl': str(arm_type), 'BypassNum': '00', 'BypassOpt': '0'}
         try:
-            r = requests.post(self.url + '/RemoteCtr.htm', auth=(self.username, self.password), data=form_data)
+            requests.post(self.url + '/RemoteCtr.htm', auth=(self.username, self.password), data=form_data)
         except requests.exceptions.ConnectionError:
             raise Exception('Could not connect the alarm system')
