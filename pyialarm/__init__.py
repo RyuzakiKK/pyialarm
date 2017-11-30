@@ -1,0 +1,1 @@
+from .pyialarm import IAlarm
