@@ -14,6 +14,8 @@ class IAlarm(object):
     ARMED_AWAY = 1
     ARMED_STAY = 2
     DISARMED = 3
+    CANCEL = 4
+    TRIGGERED = 5
 
     def __init__(self, username, password, url):
         """
@@ -30,30 +32,57 @@ class IAlarm(object):
         pass
 
     def get_status(self):
+        status = None
         try:
             r = requests.get(self.url + '/RemoteCtr.htm', auth=(self.username, self.password))
         except requests.exceptions.ConnectionError:
-            return None
-        text = r.text
-        tree = BeautifulSoup(text, 'html.parser')
-        state_line = tree.find(selected="selected")
-        if state_line:
-            return state_line["value"]
+            log.error("Connection error")
         else:
-            return None
+            text = r.text
+            tree = BeautifulSoup(text, 'html.parser')
+            if self.is_triggered(tree):
+                status = self.TRIGGERED
+            else:
+                state_line = tree.find(selected="selected")
+                if state_line:
+                    status = state_line["value"]
+        return status
 
     def arm_away(self):
-        self.arm(self.ARMED_AWAY)
+        self.send_command(self.ARMED_AWAY)
 
     def arm_stay(self):
-        self.arm(self.ARMED_STAY)
+        self.send_command(self.ARMED_STAY)
 
     def disarm(self):
-        self.arm(self.DISARMED)
+        self.send_command(self.DISARMED)
 
-    def arm(self, arm_type):
-        form_data = {'Ctrl': str(arm_type), 'BypassNum': '00', 'BypassOpt': '0'}
+    def cancel_alarm(self):
+        self.send_command(self.CANCEL)
+
+    def send_command(self, command_type):
+        form_data = {'Ctrl': str(command_type), 'BypassNum': '00', 'BypassOpt': '0'}
         try:
             requests.post(self.url + '/RemoteCtr.htm', auth=(self.username, self.password), data=form_data)
         except requests.exceptions.ConnectionError:
             raise Exception('Could not connect the alarm system')
+
+    @staticmethod
+    def is_triggered(tree):
+        script = tree.find("script")
+        array_string = None
+        for line in script.text.split('\n'):
+            if "var ZoneMsg" in line:
+                array_string = line
+                break
+
+        if array_string:
+            array_string = array_string.partition('(')[-1].rpartition(')')[0]
+            status = array_string.split(",")
+            status = list(map(int, status))
+
+            for zone in status:
+                if zone & 3:
+                    return True
+
+        return False

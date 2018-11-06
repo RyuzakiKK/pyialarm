@@ -1,6 +1,6 @@
 from setuptools import setup
 
-__version__ = '0.2'
+__version__ = '0.3'
 
 setup(
     name='pyialarm',
@@ -13,7 +13,7 @@ setup(
     download_url='https://github.com/RyuzakiKK/pyialarm',
     license='Apache 2.0',
     classifiers=[
-      'Development Status :: 3 - Alpha',
+      'Development Status :: 4 - Beta',
       'Intended Audience :: Developers',
       'Programming Language :: Python :: 3',
     ],
