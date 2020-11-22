@@ -1,6 +1,6 @@
 from setuptools import setup
 
-__version__ = '0.3'
+__version__ = '1.0'
 
 setup(
     name='pyialarm',
@@ -20,5 +20,5 @@ setup(
     keywords=['ialarm', 'antifurtocasa365', 'alarm'],
     packages=['pyialarm'],
     include_package_data=True,
-    install_requires=['requests', 'beautifulsoup4'],
+    install_requires=['dicttoxml', 'xmltodict'],
 )
