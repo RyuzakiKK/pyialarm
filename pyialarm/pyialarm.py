@@ -21,12 +21,11 @@ class IAlarm(object):
     CANCEL = 3
     TRIGGERED = 4
 
-    alarm_event_ids = [
-        "1101",  # Emergency
-        "1120",  # Another code for Emergency
-        "1131",  # Perimeter
-        "1132",  # Burglary
-    ]
+    ZONE_NOT_USED = 0
+    ZONE_IN_USE = (1 << 0)
+    ZONE_ALARM = (1 << 1)
+    ZONE_BYPASS = (1 << 2)
+    ZONE_FAULT = (1 << 3)
 
     def __init__(self, host, port=18034):
         """
@@ -48,8 +47,9 @@ class IAlarm(object):
             self.sock.close()
             raise Exception('Could not connect the alarm system')
 
-    def _send_request_list(self, xpath, command, offset=0,
-                           limit_elements=0, partial_list=None):
+    def _send_request_list(self, xpath, command, offset=0, partial_list=None):
+        if offset > 0:
+            command['Offset'] = 'S32,0,0|%d' % offset
         root_dict = self._create_root_dict(xpath, command)
         self._send_dict(root_dict)
         response = self._receive()
@@ -62,10 +62,9 @@ class IAlarm(object):
             partial_list.append(
                 self._clean_response_dict(response, '%s/L%d' % (xpath, i)))
         offset += ln
-        if total > offset and limit_elements > offset:
+        if total > offset:
             # Continue getting elements increasing the offset
-            self._send_request_list(xpath, command, offset, limit_elements,
-                                    partial_list)
+            self._send_request_list(xpath, command, offset, partial_list)
         return partial_list
 
     def _send_request(self, xpath, command) -> dict:
@@ -85,13 +84,11 @@ class IAlarm(object):
         command['Offset'] = 'S32,0,0|0'
         command['Ln'] = None
         command['Err'] = None
-        # Get the last entry of the log
-        alarm_log = self._send_request_list('/Root/Host/GetLog', command,
-                                            limit_elements=1)
-        if alarm_log is not None:
-            last_event = alarm_log[0].get("Event")
-            if last_event in self.alarm_event_ids:
-                return self.TRIGGERED
+        zone_status = self._send_request_list('/Root/Host/GetByWay', command)
+        if zone_status is not None:
+            for zone in zone_status:
+                if zone & self.ZONE_ALARM:
+                    return self.TRIGGERED
 
         if alarm_status is not None:
             return int(alarm_status.get("DevStatus"))
@@ -168,7 +165,6 @@ class IAlarm(object):
             value = str(str_re.search(value).groups()[1])
         elif typ_re.match(value):
             value = int(typ_re.search(value).groups()[1])
-
         # Else: we are not interested in this value, just keep it as is
 
         return key, value
