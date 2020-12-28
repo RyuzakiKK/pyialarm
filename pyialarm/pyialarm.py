@@ -26,6 +26,8 @@ class IAlarm(object):
     ZONE_ALARM = (1 << 1)
     ZONE_BYPASS = (1 << 2)
     ZONE_FAULT = (1 << 3)
+    ZONE_LOW_BATTERY = (1 << 4)
+    ZONE_LOSS = (1 << 5)
 
     def __init__(self, host, port=18034):
         """
