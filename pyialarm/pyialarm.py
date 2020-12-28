@@ -37,17 +37,21 @@ class IAlarm(object):
         self.host = host
         self.port = port
         self.seq = 0
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.settimeout(10)
-        self.open_connection()
+        self.sock = None
 
-    def open_connection(self) -> None:
+    def ensure_connection_is_open(self) -> None:
+        if self.sock is None or self.sock.fileno() == -1:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.settimeout(5)
+        else:
+            return
+
         self.seq = 0
         try:
             self.sock.connect((self.host, self.port))
-        except (socket.timeout, OSError):
+        except (socket.timeout, OSError, ConnectionRefusedError) as err:
             self.sock.close()
-            raise Exception('Could not connect the alarm system')
+            raise ConnectionError('Connection to the alarm system failed') from err
 
     def _send_request_list(self, xpath, command, offset=0, partial_list=None):
         if offset > 0:
@@ -95,8 +99,8 @@ class IAlarm(object):
         if alarm_status is not None:
             return int(alarm_status.get("DevStatus"))
         else:
-            raise Exception('An error occurred trying to connect the alarm '
-                            'system')
+            raise ConnectionError('An error occurred trying to connect the alarm '
+                                  'system')
 
     def arm_away(self) -> None:
         command = OrderedDict()
@@ -125,11 +129,7 @@ class IAlarm(object):
     def _send_dict(self, root_dict) -> None:
         xml = dicttoxml.dicttoxml(root_dict, attr_type=False, root=False)
 
-        try:
-            if self.sock.fileno() == -1:
-                self.open_connection()
-        except OSError:
-            self.open_connection()
+        self.ensure_connection_is_open()
 
         self.seq += 1
         msg = b'@ieM%04d%04d0000%s%04d' % (len(xml), self.seq, self._xor(xml),
@@ -139,9 +139,9 @@ class IAlarm(object):
     def _receive(self):
         try:
             data = self.sock.recv(1024)
-        except (socket.timeout, OSError):
+        except (socket.timeout, OSError, ConnectionRefusedError) as err:
             self.sock.close()
-            raise ConnectionError("Connection error")
+            raise ConnectionError("Connection error") from err
         # It might happen to receive the err tag before the root, we just
         # remove it because it's not necessary
         decoded = self._xor(data[16:-4]).decode().replace("<Err>ERR|00</Err>",
