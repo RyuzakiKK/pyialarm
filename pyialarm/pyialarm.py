@@ -8,6 +8,8 @@ import dicttoxml
 import xmltodict
 
 log = logging.getLogger(__name__)
+# dicttoxml is very verbose at INFO level
+logging.getLogger("dicttoxml").setLevel(logging.CRITICAL)
 
 
 class IAlarm(object):
