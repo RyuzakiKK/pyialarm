@@ -81,6 +81,24 @@ class IAlarm(object):
         response = self._receive()
         return self._clean_response_dict(response, xpath)
 
+    def get_mac(self) -> str:
+        command = OrderedDict()
+        command['Mac'] = None
+        command['Name'] = None
+        command['Ip'] = None
+        command['Gate'] = None
+        command['Subnet'] = None
+        command['Dns1'] = None
+        command['Dns2'] = None
+        command['Err'] = None
+        network_info = self._send_request('/Root/Host/GetNet', command)
+
+        if network_info is not None:
+            return network_info.get("Mac")
+        else:
+            raise ConnectionError('An error occurred trying to connect to the alarm '
+                                  'system')
+
     def get_status(self) -> int:
         command = OrderedDict()
         command['DevStatus'] = None
@@ -101,7 +119,7 @@ class IAlarm(object):
         if alarm_status is not None:
             return int(alarm_status.get("DevStatus"))
         else:
-            raise ConnectionError('An error occurred trying to connect the alarm '
+            raise ConnectionError('An error occurred trying to connect to the alarm '
                                   'system')
 
     def arm_away(self) -> None:
@@ -158,11 +176,14 @@ class IAlarm(object):
             return key, value
 
         err_re = re.compile(r'ERR\|(\d{2})')
+        mac_re = re.compile(r'MAC,(\d+)\|(([0-9A-F]{2}[:-]){5}([0-9A-F]{2}))')
         s32_re = re.compile(r'S32,(\d+),(\d+)\|(\d*)')
         str_re = re.compile(r'STR,(\d+)\|(.*)')
         typ_re = re.compile(r'TYP,(\w+)\|(\d+)')
         if err_re.match(value):
             value = int(err_re.search(value).groups()[0])
+        elif mac_re.match(value):
+            value = str(mac_re.search(value).groups()[1])
         elif s32_re.match(value):
             value = int(s32_re.search(value).groups()[2])
         elif str_re.match(value):
