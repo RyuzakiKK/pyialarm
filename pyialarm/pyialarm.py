@@ -130,7 +130,7 @@ class IAlarm(object):
             if zone & self.ZONE_ALARM:
                 zone_alarm = True
 
-        if zone_alarm:
+        if (status == self.ARMED_AWAY or status == self.ARMED_STAY) and zone_alarm:
             return self.TRIGGERED
 
         return status
