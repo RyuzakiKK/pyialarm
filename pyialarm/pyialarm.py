@@ -82,6 +82,7 @@ class IAlarm(object):
         return self._clean_response_dict(response, xpath)
 
     def get_mac(self) -> str:
+        mac = ""
         command = OrderedDict()
         command['Mac'] = None
         command['Name'] = None
@@ -94,33 +95,45 @@ class IAlarm(object):
         network_info = self._send_request('/Root/Host/GetNet', command)
 
         if network_info is not None:
-            return network_info.get("Mac")
+            mac = network_info.get("Mac", "")
+
+        if mac:
+            return mac
         else:
             raise ConnectionError('An error occurred trying to connect to the alarm '
-                                  'system')
+                                  'system or received an unexpected reply')
 
     def get_status(self) -> int:
         command = OrderedDict()
         command['DevStatus'] = None
         command['Err'] = None
         alarm_status = self._send_request('/Root/Host/GetAlarmStatus', command)
+        if alarm_status is None:
+            raise ConnectionError('An error occurred trying to connect to the alarm '
+                                  'system')
 
+        status = int(alarm_status.get("DevStatus", -1))
+        if status == -1:
+            raise ConnectionError('Received an unexpected reply from the alarm')
+
+        zone_alarm = False
         command = OrderedDict()
         command['Total'] = None
         command['Offset'] = 'S32,0,0|0'
         command['Ln'] = None
         command['Err'] = None
         zone_status = self._send_request_list('/Root/Host/GetByWay', command)
-        if zone_status is not None:
-            for zone in zone_status:
-                if zone & self.ZONE_ALARM:
-                    return self.TRIGGERED
-
-        if alarm_status is not None:
-            return int(alarm_status.get("DevStatus"))
-        else:
+        if zone_status is None:
             raise ConnectionError('An error occurred trying to connect to the alarm '
                                   'system')
+        for zone in zone_status:
+            if zone & self.ZONE_ALARM:
+                zone_alarm = True
+
+        if zone_alarm:
+            return self.TRIGGERED
+
+        return status
 
     def arm_away(self) -> None:
         command = OrderedDict()
