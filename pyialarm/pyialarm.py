@@ -61,6 +61,8 @@ class IAlarm(object):
         root_dict = self._create_root_dict(xpath, command)
         self._send_dict(root_dict)
         response = self._receive()
+        print("Parsed:")
+        print(response)
 
         if partial_list is None:
             partial_list = []
@@ -79,6 +81,8 @@ class IAlarm(object):
         root_dict = self._create_root_dict(xpath, command)
         self._send_dict(root_dict)
         response = self._receive()
+        print("Parsed:")
+        print(response)
         return self._clean_response_dict(response, xpath)
 
     def get_mac(self) -> str:
@@ -179,6 +183,7 @@ class IAlarm(object):
         # remove it because it's not necessary
         decoded = self._xor(data[16:-4]).decode().replace("<Err>ERR|00</Err>",
                                                           "")
+        print(decoded)
         return xmltodict.parse(decoded, xml_attribs=False,
                                dict_constructor=dict,
                                postprocessor=self._xmlread)
@@ -236,7 +241,14 @@ class IAlarm(object):
     def _xor(xml):
         sz = bytearray.fromhex('0c384e4e62382d620e384e4e44382d300f382b382b0c5a6234384e304e4c372b10535a0c20432d171142444e58422c421157322a204036172056446262382b5f0c384e4e62382d620e385858082e232c0f382b382b0c5a62343830304e2e362b10545a0c3e432e1711384e625824371c1157324220402c17204c444e624c2e12')
         buf = bytearray(xml)
+        print(buf)
         for i in range(len(xml)):
             ki = i & 0x7f
             buf[i] = buf[i] ^ sz[ki]
         return buf
+
+
+if __name__ == "__main__":
+    ialarm = IAlarm("YOUR_IP_HERE")
+    ialarm.get_status()
+    ialarm.get_mac()
