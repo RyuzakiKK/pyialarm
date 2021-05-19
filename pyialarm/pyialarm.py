@@ -250,5 +250,12 @@ class IAlarm(object):
 
 if __name__ == "__main__":
     ialarm = IAlarm("YOUR_IP_HERE")
-    ialarm.get_status()
-    ialarm.get_mac()
+
+    import time
+    for i in range(20):
+        try:
+            print(ialarm.get_status())
+        except ConnectionError:
+            print("no connection")
+        time.sleep(20)
+        print("-----------")
