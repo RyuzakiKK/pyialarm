@@ -137,6 +137,8 @@ class IAlarm(object):
         if (status == self.ARMED_AWAY or status == self.ARMED_STAY) and zone_alarm:
             return self.TRIGGERED
 
+        self.sock.close()
+
         return status
 
     def arm_away(self) -> None:
