@@ -38,7 +38,6 @@ class IAlarm(object):
         """
         self.host = host
         self.port = port
-        self.seq = 0
         self.sock = None
 
     def ensure_connection_is_open(self) -> None:
@@ -54,6 +53,10 @@ class IAlarm(object):
         except (socket.timeout, OSError, ConnectionRefusedError) as err:
             self.sock.close()
             raise ConnectionError('Connection to the alarm system failed') from err
+
+    def _close_connection(self) -> None:
+        if self.sock and self.sock.fileno() != 1:
+            self.sock.close()
 
     def _send_request_list(self, xpath, command, offset=0, partial_list=None):
         if offset > 0:
@@ -73,12 +76,15 @@ class IAlarm(object):
         if total > offset:
             # Continue getting elements increasing the offset
             self._send_request_list(xpath, command, offset, partial_list)
+
+        self._close_connection()
         return partial_list
 
     def _send_request(self, xpath, command) -> dict:
         root_dict = self._create_root_dict(xpath, command)
         self._send_dict(root_dict)
         response = self._receive()
+        self._close_connection()
         return self._clean_response_dict(response, xpath)
 
     def get_mac(self) -> str:
@@ -164,9 +170,7 @@ class IAlarm(object):
 
         self.ensure_connection_is_open()
 
-        self.seq += 1
-        msg = b'@ieM%04d%04d0000%s%04d' % (len(xml), self.seq, self._xor(xml),
-                                           self.seq)
+        msg = b'@ieM%04d00010000%s0001' % (len(xml), self._xor(xml))
         self.sock.send(msg)
 
     def _receive(self):
