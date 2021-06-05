@@ -182,10 +182,18 @@ class IAlarm(object):
         except (socket.timeout, OSError, ConnectionRefusedError) as err:
             self.sock.close()
             raise ConnectionError("Connection error") from err
+
+        if not data:
+            raise ConnectionError("Connection error, received no reply")
+
         # It might happen to receive the err tag before the root, we just
         # remove it because it's not necessary
         decoded = self._xor(data[16:-4]).decode().replace("<Err>ERR|00</Err>",
                                                           "")
+
+        if not decoded:
+            raise ConnectionError("Connection error, received an unexpected reply")
+
         return xmltodict.parse(decoded, xml_attribs=False,
                                dict_constructor=dict,
                                postprocessor=self._xmlread)
