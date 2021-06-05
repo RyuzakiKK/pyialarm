@@ -38,6 +38,7 @@ class IAlarm(object):
         """
         self.host = host
         self.port = port
+        self.seq = 0
         self.sock = None
 
     def ensure_connection_is_open(self) -> None:
@@ -77,7 +78,6 @@ class IAlarm(object):
             # Continue getting elements increasing the offset
             self._send_request_list(xpath, command, offset, partial_list)
 
-        self._close_connection()
         return partial_list
 
     def _send_request(self, xpath, command) -> dict:
@@ -129,6 +129,7 @@ class IAlarm(object):
         command['Ln'] = None
         command['Err'] = None
         zone_status = self._send_request_list('/Root/Host/GetByWay', command)
+        self._close_connection()
         if zone_status is None:
             raise ConnectionError('An error occurred trying to connect to the alarm '
                                   'system')
@@ -170,7 +171,9 @@ class IAlarm(object):
 
         self.ensure_connection_is_open()
 
-        msg = b'@ieM%04d00010000%s0001' % (len(xml), self._xor(xml))
+        self.seq += 1
+        msg = b'@ieM%04d%04d0000%s%04d' % (len(xml), self.seq, self._xor(xml),
+                                           self.seq)
         self.sock.send(msg)
 
     def _receive(self):
