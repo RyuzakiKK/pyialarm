@@ -184,6 +184,7 @@ class IAlarm(object):
             raise ConnectionError("Connection error") from err
 
         if not data:
+            self.sock.close()
             raise ConnectionError("Connection error, received no reply")
 
         # It might happen to receive the err tag before the root, we just
@@ -192,6 +193,7 @@ class IAlarm(object):
                                                           "")
 
         if not decoded:
+            self.sock.close()
             raise ConnectionError("Connection error, received an unexpected reply")
 
         return xmltodict.parse(decoded, xml_attribs=False,
