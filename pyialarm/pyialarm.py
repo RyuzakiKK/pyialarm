@@ -109,7 +109,7 @@ class IAlarm(object):
             raise ConnectionError('An error occurred trying to connect to the alarm '
                                   'system or received an unexpected reply')
 
-    def get_status(self) -> int:
+    def get_status(self, include_memory_feature=False) -> int:
         command = OrderedDict()
         command['DevStatus'] = None
         command['Err'] = None
@@ -121,6 +121,9 @@ class IAlarm(object):
         status = int(alarm_status.get("DevStatus", -1))
         if status == -1:
             raise ConnectionError('Received an unexpected reply from the alarm')
+
+        if not include_memory_feature:
+            return status
 
         zone_alarm = False
         command = OrderedDict()
