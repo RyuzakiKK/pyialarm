@@ -1,6 +1,6 @@
 from setuptools import setup
 
-__version__ = '1.9.0'
+__version__ = '2.0.0'
 
 setup(
     name='pyialarm',
