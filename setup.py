@@ -20,5 +20,5 @@ setup(
     keywords=['ialarm', 'antifurtocasa365', 'alarm'],
     packages=['pyialarm'],
     include_package_data=True,
-    install_requires=['dicttoxml', 'xmltodict'],
+    install_requires=['dicttoxml2', 'xmltodict'],
 )

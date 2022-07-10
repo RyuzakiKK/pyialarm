@@ -4,13 +4,8 @@ import re
 import socket
 from collections import OrderedDict
 
-import dicttoxml
+import dicttoxml2
 import xmltodict
-
-# TODO Workaround for https://github.com/quandyfactory/dicttoxml/issues/91
-# Remove when dicttoxml 1.7.5 is released
-import collections
-collections.Iterable = collections.abc.Iterable
 
 log = logging.getLogger(__name__)
 # dicttoxml is very verbose at INFO level
@@ -179,7 +174,7 @@ class IAlarm(object):
         self._send_request('/Root/Host/SetAlarmStatus', command)
 
     def _send_dict(self, root_dict) -> None:
-        xml = dicttoxml.dicttoxml(root_dict, attr_type=False, root=False)
+        xml = dicttoxml2.dicttoxml(root_dict, attr_type=False, root=False)
 
         self.ensure_connection_is_open()
 
