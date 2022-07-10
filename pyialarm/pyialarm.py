@@ -62,9 +62,7 @@ class IAlarm(object):
     def _send_request_list(self, xpath, command, offset=0, partial_list=None):
         if offset > 0:
             command['Offset'] = 'S32,0,0|%d' % offset
-        root_dict = self._create_root_dict(xpath, command)
-        self._send_dict(root_dict)
-        response = self._receive()
+        response = self._send_request_raw(xpath, command)
 
         if partial_list is None:
             partial_list = []
@@ -80,11 +78,23 @@ class IAlarm(object):
 
         return partial_list
 
-    def _send_request(self, xpath, command) -> dict:
+    def _send_request_raw(self, xpath, command) -> dict:
         root_dict = self._create_root_dict(xpath, command)
-        self._send_dict(root_dict)
-        response = self._receive()
-        self._close_connection()
+        try:
+            self._send_dict(root_dict)
+            response = self._receive()
+        except ConnectionError as err:
+            log.debug("Failed to send request, retrying with a new connection: %s", err)
+            self._close_connection()
+            # The alarm can start to drop responses if we send multiple requests back-to-back
+            time.sleep(1)
+            self._send_dict(root_dict)
+            response = self._receive()
+
+        return response
+
+    def _send_request(self, xpath, command) -> dict:
+        response = self._send_request_raw(xpath, command)
         return self._clean_response_dict(response, xpath)
 
     def get_mac(self) -> str:
@@ -132,6 +142,9 @@ class IAlarm(object):
         if status != self.ARMED_AWAY and status != self.ARMED_STAY:
             # If the status is not "armed", there is no point in checking for "triggered"
             return status
+
+        # The alarm can start to drop responses if we send multiple different requests back-to-back
+        time.sleep(1)
 
         command = OrderedDict()
         command['Total'] = None
