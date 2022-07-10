@@ -110,6 +110,13 @@ class IAlarm(object):
                                   'system or received an unexpected reply')
 
     def get_status(self, include_memory_feature=False) -> int:
+        """
+        :param include_memory_feature:
+            .. deprecated:: 1.9.5
+                Memory feature is always enabled, this parameter has no effect
+        :return: The current alarm status
+        :raises ConnectionError:
+        """
         command = OrderedDict()
         command['DevStatus'] = None
         command['Err'] = None
@@ -122,10 +129,10 @@ class IAlarm(object):
         if status == -1:
             raise ConnectionError('Received an unexpected reply from the alarm')
 
-        if not include_memory_feature:
+        if status != self.ARMED_AWAY and status != self.ARMED_STAY:
+            # If the status is not "armed", there is no point in checking for "triggered"
             return status
 
-        zone_alarm = False
         command = OrderedDict()
         command['Total'] = None
         command['Offset'] = 'S32,0,0|0'
@@ -138,10 +145,7 @@ class IAlarm(object):
                                   'system')
         for zone in zone_status:
             if zone & self.ZONE_ALARM:
-                zone_alarm = True
-
-        if (status == self.ARMED_AWAY or status == self.ARMED_STAY) and zone_alarm:
-            return self.TRIGGERED
+                status = self.TRIGGERED
 
         return status
 
