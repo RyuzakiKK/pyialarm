@@ -7,6 +7,11 @@ from collections import OrderedDict
 import dicttoxml
 import xmltodict
 
+# TODO Workaround for https://github.com/quandyfactory/dicttoxml/issues/91
+# Remove when dicttoxml 1.7.5 is released
+import collections
+collections.Iterable = collections.abc.Iterable
+
 log = logging.getLogger(__name__)
 # dicttoxml is very verbose at INFO level
 logging.getLogger("dicttoxml").setLevel(logging.CRITICAL)
