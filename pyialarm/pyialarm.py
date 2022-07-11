@@ -1,5 +1,4 @@
 import logging
-import time
 
 import re
 import socket
@@ -63,7 +62,9 @@ class IAlarm(object):
     def _send_request_list(self, xpath, command, offset=0, partial_list=None):
         if offset > 0:
             command['Offset'] = 'S32,0,0|%d' % offset
-        response = self._send_request_raw(xpath, command)
+        root_dict = self._create_root_dict(xpath, command)
+        self._send_dict(root_dict)
+        response = self._receive()
 
         if partial_list is None:
             partial_list = []
@@ -79,23 +80,11 @@ class IAlarm(object):
 
         return partial_list
 
-    def _send_request_raw(self, xpath, command) -> dict:
-        root_dict = self._create_root_dict(xpath, command)
-        try:
-            self._send_dict(root_dict)
-            response = self._receive()
-        except ConnectionError as err:
-            log.debug("Failed to send request, retrying with a new connection: %s", err)
-            self._close_connection()
-            # The alarm can start to drop responses if we send multiple requests back-to-back
-            time.sleep(1)
-            self._send_dict(root_dict)
-            response = self._receive()
-
-        return response
-
     def _send_request(self, xpath, command) -> dict:
-        response = self._send_request_raw(xpath, command)
+        root_dict = self._create_root_dict(xpath, command)
+        self._send_dict(root_dict)
+        response = self._receive()
+        self._close_connection()
         return self._clean_response_dict(response, xpath)
 
     def get_mac(self) -> str:
@@ -121,13 +110,6 @@ class IAlarm(object):
                                   'system or received an unexpected reply')
 
     def get_status(self, include_memory_feature=False) -> int:
-        """
-        :param include_memory_feature:
-            .. deprecated:: 1.9.5
-                Memory feature is always enabled, this parameter has no effect
-        :return: The current alarm status
-        :raises ConnectionError:
-        """
         command = OrderedDict()
         command['DevStatus'] = None
         command['Err'] = None
@@ -140,13 +122,10 @@ class IAlarm(object):
         if status == -1:
             raise ConnectionError('Received an unexpected reply from the alarm')
 
-        if status != self.ARMED_AWAY and status != self.ARMED_STAY:
-            # If the status is not "armed", there is no point in checking for "triggered"
+        if not include_memory_feature:
             return status
 
-        # The alarm can start to drop responses if we send multiple different requests back-to-back
-        time.sleep(1)
-
+        zone_alarm = False
         command = OrderedDict()
         command['Total'] = None
         command['Offset'] = 'S32,0,0|0'
@@ -159,7 +138,10 @@ class IAlarm(object):
                                   'system')
         for zone in zone_status:
             if zone & self.ZONE_ALARM:
-                status = self.TRIGGERED
+                zone_alarm = True
+
+        if (status == self.ARMED_AWAY or status == self.ARMED_STAY) and zone_alarm:
+            return self.TRIGGERED
 
         return status
 
